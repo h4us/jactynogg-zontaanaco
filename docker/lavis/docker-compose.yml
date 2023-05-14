@@ -1,0 +1,25 @@
+version: '3.9'
+
+services:
+  torch:
+    build:
+      context: .
+      dockerfile: ./_torch/Dockerfile
+    container_name: torch_service
+    ports:
+      - 8080:8080
+    tty: true
+    env_file: .env
+    volumes:
+      # - ./LAVIS:/opt/LAVIS
+      - ./LAVIS_APP:/opt/LAVIS_APP
+      - ./.cache:${CONTAINER_HOME}/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # volumes:
