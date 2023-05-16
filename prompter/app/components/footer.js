@@ -54,7 +54,7 @@ export default function Footer() {
     <footer className="w-full fixed flex flex-col items-center bottom-0 text-center p-4">
       {
         captions.map((el, i) => (
-          <div key={i} className="inline-flex text-white text-3xl px-2 py-4 my-2 bg-black/[.6]">{el}</div>
+          <div key={i} className="inline-flex text-white text-6xl px-2 py-4 my-2 bg-black/[.6]">{el}</div>
         ))
       }
     </footer>
