@@ -95,24 +95,18 @@ const rq = async () => {
         signal: controller.signal,
       });
       console.log('gpt: ', completion.data.choices[0].message.content);
+
       t_j = {
         translations: [
-          completion.data.choices[0].message.content
+          { text: completion.data.choices[0].message.content }
         ]
       };
 
-      // client.send(
-      //   '/msg',
-      //   [completion.data.choices[0].message.content + sample([', わたしにはそう見えます。', ', そう見えませんか？', '', '', '']), en]
-      // );
-
       clearTimeout(tc);
     } catch (err) {
-      console.error('err?', err.type);
+      console.error('gpt response err?', err.type);
       clearTimeout(tc);
     }
-
-    // console.log(t, t_j);
 
     const { translations = [] } = t_j;
 
