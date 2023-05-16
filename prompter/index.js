@@ -11,7 +11,7 @@ import 'dotenv/config';
 
 // NOTE: .env
 const {
-  LAVIS_HOST, WS_HOST,
+  LAVIS_HOST, WS_HOST,  MJPEG_STREAMER_HOST,
   OPENAI_API_KEY, DEEPL_API_KEY,
   OSC_CLIENT_DEST,
 } = process.env;
@@ -36,6 +36,7 @@ const rq = async () => {
   try {
     const t = await got.get(`http://${LAVIS_HOST}:8080`).json();
 
+    // deepL
     const t_j = await got.post('https://api-free.deepl.com/v2/translate', {
       headers: {
         Authorization: `DeepL-Auth-Key ${DEEPL_API_KEY}`
@@ -47,7 +48,7 @@ const rq = async () => {
       }
     }).json();
 
-    console.log(t, t_j);
+    // console.log(t, t_j);
 
     const { translations = [] } = t_j;
 
@@ -88,7 +89,7 @@ const runApp = async () => {
     .get('/env', (req, reply) => {
       // TODO: response
       reply.send({
-        WS_HOST, LAVIS_HOST
+        WS_HOST, LAVIS_HOST, MJPEG_STREAMER_HOST
       });
     })
     .post('/config', (req, reply) => {
