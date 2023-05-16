@@ -7,6 +7,9 @@ import PQueue from 'p-queue';
 import { Server, Client } from 'node-osc';
 import { WebSocketServer } from 'ws';
 import got from 'got';
+import sample from 'lodash.sample';
+import { Configuration, OpenAIApi } from 'openai';
+
 import 'dotenv/config';
 
 // NOTE: .env
@@ -15,6 +18,9 @@ const {
   OPENAI_API_KEY, DEEPL_API_KEY,
   OSC_CLIENT_DEST,
 } = process.env;
+
+const configuration = new Configuration({ apiKey: OPENAI_API_KEY });
+const openai = new OpenAIApi(configuration);
 
 // TODO:
 import * as appConfig  from './app.config.js';
@@ -36,8 +42,9 @@ const rq = async () => {
   try {
     const t = await got.get(`http://${LAVIS_HOST}:8080`).json();
 
+    let t_j;
     // deepL
-    const t_j = await got.post('https://api-free.deepl.com/v2/translate', {
+    t_j = await got.post('https://api-free.deepl.com/v2/translate', {
       headers: {
         Authorization: `DeepL-Auth-Key ${DEEPL_API_KEY}`
       },
@@ -48,6 +55,63 @@ const rq = async () => {
       }
     }).json();
 
+    // chatGPT
+    const controller = new AbortController();
+
+    const tc = setTimeout(() => {
+      controller.abort();
+      console.error('-- timeout gpt');
+      // client.send('/msg', [en]);
+    }, 7 * 1000);
+
+    const messages = [
+      {
+        "role": "system",
+        "content": sample([
+          "You are a helpful assistant.",
+          // "You are an artist"
+        ])
+      },
+      {
+        "role": "user",
+        "content": sample([
+          `次の文章を日本語でもっと具体的にして: "${t}"`,
+          // `次の文章を日本語でもっと悲しくして: "${en}"`,
+          // `次の文章を日本語でもっと楽しくして: "${en}"`,
+          // `次の単語を使った詩を日本語で書いて: "${en}"`,
+          // `次の文章の続きを日本語で書いて: "${en}"`
+        ])
+      }
+    ];
+
+    console.log(messages);
+
+    try {
+      const completion = await openai.createChatCompletion({
+        model: "gpt-3.5-turbo",
+        max_tokens: 100,
+        messages
+      }, {
+        signal: controller.signal,
+      });
+      console.log('gpt: ', completion.data.choices[0].message.content);
+      t_j = {
+        translations: [
+          completion.data.choices[0].message.content
+        ]
+      };
+
+      // client.send(
+      //   '/msg',
+      //   [completion.data.choices[0].message.content + sample([', わたしにはそう見えます。', ', そう見えませんか？', '', '', '']), en]
+      // );
+
+      clearTimeout(tc);
+    } catch (err) {
+      console.error('err?', err.type);
+      clearTimeout(tc);
+    }
+
     // console.log(t, t_j);
 
     const { translations = [] } = t_j;
@@ -56,6 +120,8 @@ const rq = async () => {
       if (wss.clients.size > 0) {
         wss.clients.forEach((el) => el.send(JSON.stringify([translations[0].text])));
       }
+
+      await readingFunc(translations[0].text, '');
     } else {
       if (wss.clients.size > 0) {
         wss.clients.forEach((el) => el.send(JSON.stringify(t)));
@@ -125,7 +191,7 @@ const readingFunc = async (msg, msg2) => {
     // --
     await page.waitForTimeout(250);
 
-    oscClient.send('/msg', [msg, msg2]);
+    // oscClient.send('/msg', [msg, msg2]);
 
     const bState = await page.evaluateHandle(_ => { return { currentLength: 0, duration: NaN }; });
 
@@ -195,23 +261,22 @@ oscServer.on('message', (msg) => {
 
         if (qq.size > 5) { qq.clear(); }
 
-        // qq.add(() => readingFunc());
         qq.add(async () => readingFunc(ja, en));
       }
     }
   }
 });
 
-// (async () => {
-//   const browser = await puppeteer.launch({
-//     headless: false,
-//     timeout: 60 * 1000
-//   });
-//   page = await browser.newPage();
+(async () => {
+  const browser = await puppeteer.launch({
+    headless: false,
+    timeout: 60 * 1000
+  });
+  page = await browser.newPage();
 
-//   await page.goto(turl);
-//   page.setDefaultTimeout(60 * 1000);
-//   await page.setViewport({ width: 1080, height: 1024 });
-// })();
+  await page.goto(turl);
+  page.setDefaultTimeout(60 * 1000);
+  await page.setViewport({ width: 1080, height: 1024 });
+})();
 
 runApp();
