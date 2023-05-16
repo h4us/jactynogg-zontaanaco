@@ -20,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 app = FastAPI()
 
 @app.get("/")
-def rest_ndpoint():
+def rest_endpoint():
     raw_frame = requests.get(f"http://{os.environ['MJPEG_STREAMER_HOST']}:8081/snapshot");
     frame = BytesIO(raw_frame.content)
     raw_image = Image.open(frame).convert("RGB")
