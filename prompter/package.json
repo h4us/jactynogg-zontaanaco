@@ -1,0 +1,46 @@
+{
+  "name": "prompter",
+  "version": "0.9.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "build": "next build",
+    "dev": "nodemon index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fastify/nextjs": "^9.2.0",
+    "autoprefixer": "^10.4.14",
+    "dotenv": "^16.0.3",
+    "fastify": "^4.17.0",
+    "got": "^12.6.0",
+    "lodash.sample": "^4.2.1",
+    "lodash.samplesize": "^4.2.0",
+    "next": "^13.4.2",
+    "node-osc": "^8.0.10",
+    "openai": "^3.2.1",
+    "p-queue": "^7.3.4",
+    "postcss": "^8.4.23",
+    "puppeteer": "^19.7.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.3.2",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.21"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      ".gitignore",
+      "testClient.js",
+      "bridgeClient.js",
+      "package.json",
+      "node_modules"
+    ]
+  }
+}
