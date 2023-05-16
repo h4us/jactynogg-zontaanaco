@@ -53,7 +53,7 @@ const rq = async () => {
 
     if (translations.length > 0) {
       if (wss.clients.size > 0) {
-        wss.clients.forEach((el) => el.send(JSON.stringify(translations[0].text)));
+        wss.clients.forEach((el) => el.send(JSON.stringify([translations[0].text])));
       }
     } else {
       if (wss.clients.size > 0) {
