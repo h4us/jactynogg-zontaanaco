@@ -6,6 +6,7 @@ export default function Footer() {
   const socketRef = useRef();
   const captionCt = useRef(0);
   const [captions, setCaptions] = useState([]);
+  const [captionPos, setCaptionPos] = useState(false);
 
   useEffect(() => {
     // if (captions.length > 4) {
@@ -33,10 +34,11 @@ export default function Footer() {
       rconfig = await rconfig.json();
 
       const {
-        WS_HOST,
+        WS_HOST, TEXT_POSITION,
         ...rest
       } = rconfig;
 
+      setCaptionPos(TEXT_POSITION);
       socketRef.current = new WebSocket(`ws:${WS_HOST}:3001`);
       socketRef.current.addEventListener('open', onWSopen);
     })();
@@ -52,7 +54,7 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="w-3/4 fixed flex flex-col items-start bottom-0 p-4">
+    <footer className={captionPos == 'right' ? "w-3/4 fixed flex flex-col items-start right-0 bottom-0 p-4" : "w-3/4 fixed flex flex-col items-start bottom-0 p-4"}>
       {
         captions.map((el, i) => (
           <div key={i} className="inline-flex text-white text-5xl px-2 py-4 my-2 bg-black/[.6]">{el}</div>
