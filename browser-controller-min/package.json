@@ -1,0 +1,51 @@
+{
+  "private": true,
+  "version": "1.0.0",
+  "name": "mod-agv-controller-mini",
+  "scripts": {
+    "dev": "nodemon ./server.js",
+    "build": "next build",
+    "start": "cross-env NODE_ENV=production node ./server.js"
+  },
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6.1.1",
+    "@codemirror/lang-json": "^6.0.1",
+    "@fastify/multipart": "^7.3.0",
+    "@leva-ui/plugin-spring": "^0.9.18",
+    "@primer/octicons-react": "^17.5.0",
+    "@uiw/codemirror-theme-github": "^4.13.2",
+    "@uiw/react-codemirror": "^4.13.2",
+    "ag-grid-community": "^28.1.1",
+    "ag-grid-react": "^28.1.1",
+    "cross-env": "^7.0.3",
+    "fastify": "^4.9.0",
+    "fastify-plugin": "^4.3.0",
+    "leva": "^0.9.31",
+    "lodash.template": "^4.5.0",
+    "lowdb": "^5.0.5",
+    "next": "latest",
+    "node-osc": "^8.0.11",
+    "p-queue": "^7.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "ws": "^8.10.0",
+    "xstate": "^4.34.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.12",
+    "daisyui": "^2.31.0",
+    "nodemon": "^2.0.19",
+    "postcss": "^8.4.16",
+    "tailwindcss": "^3.1.8"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "pages/*",
+      "components/*",
+      "stores/*",
+      "templates/*",
+      "app.config.js",
+      "user.config.js"
+    ]
+  }
+}

@@ -1,4 +1,8 @@
 import { setTimeout as sleep } from 'timers/promises';
+import { writeFile } from 'fs/promises';
+import { exec as _exec } from 'child_process';
+import { promisify } from 'util';
+const exec = promisify(_exec);
 
 import Fastify from 'fastify';
 import * as FastifyNext from '@fastify/nextjs';
@@ -8,7 +12,11 @@ import { Server, Client } from 'node-osc';
 import { WebSocketServer } from 'ws';
 import got from 'got';
 import sample from 'lodash.sample';
+import random from 'lodash.random';
 import { Configuration, OpenAIApi } from 'openai';
+
+import TextToSpeech from '@google-cloud/text-to-speech';
+const client = new TextToSpeech.TextToSpeechClient();
 
 import 'dotenv/config';
 
@@ -23,7 +31,7 @@ const configuration = new Configuration({ apiKey: OPENAI_API_KEY });
 const openai = new OpenAIApi(configuration);
 
 // TODO:
-import * as appConfig  from './app.config.js';
+import appConfig  from './app.config.js';
 const { fetchIntervalSleep } = appConfig;
 
 let page = false;
@@ -31,25 +39,24 @@ let lastMsg = '';
 const turl = 'https://translate.google.com/?hl=ja&sl=auto&tl=ja';
 
 const oscServer = new Server(9990, '0.0.0.0');
-const oscClient = new Client('0.0.0.0', 9991);
 
 const wss = new WebSocketServer({
   port: 3001,
   clientTracking: true
 });
 
-const rq = async () => {
+const rq = async (loop = true) => {
   try {
-    const t = await got.get(`http://${LAVIS_HOST}:8080`).json();
+    const caption = await got.get(`http://${LAVIS_HOST}:8080`).json();
 
-    let t_j;
+    let caption_j;
     // deepL
-    t_j = await got.post('https://api-free.deepl.com/v2/translate', {
+    caption_j = await got.post('https://api-free.deepl.com/v2/translate', {
       headers: {
         Authorization: `DeepL-Auth-Key ${DEEPL_API_KEY}`
       },
       form: {
-        text: t[0],
+        text: caption[0],
         source_lang: 'EN',
         target_lang: 'JA'
       }
@@ -61,7 +68,6 @@ const rq = async () => {
     const tc = setTimeout(() => {
       controller.abort();
       console.error('-- timeout gpt');
-      // client.send('/msg', [en]);
     }, 7 * 1000);
 
     const messages = [
@@ -75,9 +81,9 @@ const rq = async () => {
       {
         "role": "user",
         "content": sample([
-          `次の文章を日本語でもっと具体的にして: "${t}"`,
-          // `次の文章を日本語でもっと悲しくして: "${en}"`,
-          // `次の文章を日本語でもっと楽しくして: "${en}"`,
+          `次の文章を60語以内で日本語でもっと具体的にして: "${caption[0]}"`,
+          // `次の文章を日本語でもっと悲しくして: "${caption[0]}"`,
+          `次の文章を60語以内で日本語でもっと楽しくして: "${caption[0]}"`,
           // `次の単語を使った詩を日本語で書いて: "${en}"`,
           // `次の文章の続きを日本語で書いて: "${en}"`
         ])
@@ -94,9 +100,10 @@ const rq = async () => {
       }, {
         signal: controller.signal,
       });
+
       console.log('gpt: ', completion.data.choices[0].message.content);
 
-      t_j = {
+      caption_j = {
         translations: [
           { text: completion.data.choices[0].message.content }
         ]
@@ -108,26 +115,39 @@ const rq = async () => {
       clearTimeout(tc);
     }
 
-    const { translations = [] } = t_j;
+    const { translations = [] } = caption_j;
 
+    // NOTE: send telop and read
     if (translations.length > 0) {
       if (wss.clients.size > 0) {
         wss.clients.forEach((el) => el.send(JSON.stringify([translations[0].text])));
       }
 
-      await readingFunc(translations[0].text, '');
+      //! reading
+      await gcpReadingFunc(translations[0].text);
+      // await readingFunc(translations[0].text, '');
     } else {
       if (wss.clients.size > 0) {
         wss.clients.forEach((el) => el.send(JSON.stringify(t)));
       }
     }
+    // --
   } catch (err) {
     console.error(err.message);
   }
 
-  await sleep(fetchIntervalSleep);
+  if (typeof fetchIntervalSleep == 'number') {
+    console.log('sleep', fetchIntervalSleep);
+    await sleep(fetchIntervalSleep);
+  } else if (Array.isArray(fetchIntervalSleep)) {
+    const [lv, hv] = fetchIntervalSleep;
+    console.log('range?', lv, hv);
+    await sleep(random(lv, hv));
+  } else {
+    console.log('--');
+  }
 
-  rq();
+  if (loop) { rq(); }
 };
 
 const qq = new PQueue({ concurrency: 1 });
@@ -165,7 +185,28 @@ const runApp = async () => {
   }
 };
 
+
+const gcpReadingFunc = async (text) => {
+  const request_ja = {
+    input: { text: text },
+    voice: {
+      languageCode: 'ja-JP', ssmlGender: 'MALE',
+      name: 'ja-JP-Neural2-D'
+    },
+    audioConfig: { audioEncoding: 'MP3' },
+  };
+
+  const [response] = await client.synthesizeSpeech(request_ja);
+
+  const ja_audio = `./audio/ja_${Date.now()}.mp3`;
+
+  await writeFile(`${ja_audio}`, response.audioContent, 'binary');
+
+  await exec(`ffplay -v 0 -nodisp -autoexit ${ja_audio}`);
+};
+
 const readingFunc = async (msg, msg2) => {
+  // NOTE: google translation w/ puppetteer
   try {
     console.log('--start', new Date());
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -184,8 +225,6 @@ const readingFunc = async (msg, msg2) => {
 
     // --
     await page.waitForTimeout(250);
-
-    // oscClient.send('/msg', [msg, msg2]);
 
     const bState = await page.evaluateHandle(_ => { return { currentLength: 0, duration: NaN }; });
 
@@ -223,8 +262,6 @@ const readingFunc = async (msg, msg2) => {
 };
 
 oscServer.on('message', (msg) => {
-  console.log('Queue size / Running: ', qq.size, qq.pending);
-
   const [tag, ja, en] = msg;
 
   if (page) {

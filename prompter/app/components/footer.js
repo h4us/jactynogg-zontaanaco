@@ -8,16 +8,17 @@ export default function Footer() {
   const [captions, setCaptions] = useState([]);
 
   useEffect(() => {
-    if (captions.length > 4) {
-      setTimeout(setCaptions((c) => c.slice(c, c.length - 2)), 3000);
-    }
+    // if (captions.length > 4) {
+    //   setTimeout(setCaptions((c) => c.slice(c, c.length - 2)), 3000);
+    // }
   }, [captions]);
 
   useEffect(() => {
     const onWSMessage = (e) => {
       const { data = '' } = e;
       const d = JSON.parse(data);
-      setCaptions((prev) => [`${d[0]} [${captionCt.current}]`, ...prev]);
+      // setCaptions((prev) => [`${d[0]} [${captionCt.current}]`, ...prev]);
+      setCaptions((prev) => [`${d[0]} [${captionCt.current}]`]);
       captionCt.current ++;
     };
 
@@ -51,10 +52,10 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="w-full fixed flex flex-col items-center bottom-0 text-center p-4">
+    <footer className="w-3/4 fixed flex flex-col items-start bottom-0 p-4">
       {
         captions.map((el, i) => (
-          <div key={i} className="inline-flex text-white text-6xl px-2 py-4 my-2 bg-black/[.6]">{el}</div>
+          <div key={i} className="inline-flex text-white text-5xl px-2 py-4 my-2 bg-black/[.6]">{el}</div>
         ))
       }
     </footer>

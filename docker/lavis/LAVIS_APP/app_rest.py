@@ -29,7 +29,7 @@ def rest_endpoint():
     # model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="large_coco", is_eval=True, device=device)
     image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
 
-    caption = model.generate({"image": image});
+    caption = model.generate({"image": image}, use_nucleus_sampling=True, num_beams=3);
     return caption
 
 # class ConnectionManager:

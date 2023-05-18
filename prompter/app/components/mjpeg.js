@@ -21,7 +21,7 @@ export default function Mjpeg() {
   return (
     <figure className="w-full aspect-[16/9]">
       <img
-    src={`http://${mjpegHost}:8081/stream`}
+        src={`http://${mjpegHost}:8081/stream`}
         className="w-full object-contain" />
     </figure>
   );
