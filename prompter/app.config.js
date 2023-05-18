@@ -1,6 +1,6 @@
 const appConfig = {
   fetchMode: 'interval',
-  fetchIntervalSleep: 1500
+  fetchIntervalSleep: ['random', 1000, 5000]
 };
 
 export default appConfig;
