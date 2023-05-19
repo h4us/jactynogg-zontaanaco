@@ -2,78 +2,39 @@
 
 import { useEffect, useRef, useState, useMemo } from "react";
 
-import { useControls, button, folder, Leva } from 'leva';
-
-import { AgGridReact } from 'ag-grid-react';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
-
-import {
-  InstructionCellRenderer,
-  InstructionCellEditor
-} from '@/app/components/custom-data-view';
+import { useControls, button, toggle, folder, Leva } from 'leva';
 
 export default function Preference() {
   const socketRef = useRef();
   const [admin, setAdmin] = useState(false);
 
-  const [version, setVersion] = useState('');
-  const stateRef = useRef(0);
-  const callerRef = useRef({});
+  const qListRef = useRef(new Set());
 
-  const gridRef = useRef();
-  // const srcDataRef = useRef();
-  const [rowData, setRowData] = useState();
-  const [columnDefs, setColumnDefs] = useState([
-    {
-      // TODO:
-      headerName: '',
-      valueGetter: 'node.rowIndex',
-      maxWidth: 100,
-      resizable: false
-    },
-    {
-      field: 'name',
-      headerName: 'Instruction',
-      filter: true, rowDrag: true, minWidth: 200, width: 240
-    },
-    {
-      field: 'data',
-      headerName: 'Parameters',
-      editable: true,
-      cellRenderer: InstructionCellRenderer,
-      cellEditor:  InstructionCellEditor,
-      cellEditorPopup: true,
+  const getParentPath = (path) => {
+    return path.split('.').pop();
+  };
+
+  const sendQlist = (v, l) => {
+    const k = getParentPath(l);
+
+    if (v) {
+      qListRef.current.add(k);
+    } else {
+      qListRef.current.delete(k);
     }
-  ]);
 
-  const defaultColDef = useMemo(() => ({
-    resizable: true,
-    lockPosition: 'left',
-    flex: 1
-  }));
+    window.fetch('/config', {
+      method: 'post',
+      body: JSON.stringify({
+        userTextSources: Array.from(qListRef.current)
+      })
+    });
+  };
 
-  const [ctl, setCtl] = useControls(() => ({
+  const ctl = useControls(() => ({
     "Preference": folder({
+      //
       'Interval': folder({
-        callType: {
-          value: 0,
-          options: { 'skip': 0, 'range': 1 },
-          onChange: (v) => {
-            callerRef.current = Object.assign(callerRef.current, { type: v });
-          }
-        },
-        callTarget: {
-          value: 0,
-          step: 1, min: 0, max: 255,
-          onChange: (v) => {
-            callerRef.current = Object.assign(callerRef.current, { target: v });
-          }
-        },
-        send: button((api) => {
-          const { type, target } = callerRef.current;
-          window.fetch(`/tzbot/remotecall/${type}/${target}`);
-        }),
         skip: button(_ => {
           window.fetch('/config', {
             method: 'post',
@@ -134,76 +95,37 @@ export default function Preference() {
           });
         }),
       }),
-      'Presets': folder({
-        p1: button(_ => {
-          window.fetch('/config', {
-            method: 'post',
-            body: JSON.stringify({
-              userTextSources: [
-                `次の文章を50語以内で日本語でもっと具体的にして: `,
-              ]
-            })
-          });
-        }),
-        p2: button(_ => {
-          window.fetch('/config', {
-            method: 'post',
-            body: JSON.stringify({
-              userTextSources: [
-                `次の文章を50語以内で日本語でもっと具体的にして: `,
-                `次の文章を50語以内で日本語でもっと悲しくして: `,
-              ]
-            })
-          });
-        }),
-        p3: button(_ => {
-          window.fetch('/config', {
-            method: 'post',
-            body: JSON.stringify({
-              userTextSources: [
-                `次の文章を50語以内で日本語でもっと具体的にして: `,
-                `次の文章を50語以内で日本語でもっと悲しくして: `,
-                `次の文章を50語以内で日本語でもっと楽しくして: `,
-              ]
-            })
-          });
-        }),
-        p4: button(_ => {
-          window.fetch('/config', {
-            method: 'post',
-            body: JSON.stringify({
-              userTextSources: [
-                `次の文章を50語以内で日本語でもっと具体的にして: `,
-                `次の文章を50語以内で日本語でもっと悲しくして: `,
-                `次の文章を50語以内で日本語でもっと楽しくして: `,
-                `次の単語を50語以内で使った詩を日本語で書いて: `,
-              ]
-            })
-          });
-        }),
-
-        p5: button(_ => {
-          window.fetch('/config', {
-            method: 'post',
-            body: JSON.stringify({
-              userTextSources: [
-                `次の文章を50語以内で日本語でもっと具体的にして: `,
-                `次の文章を50語以内で日本語でもっと悲しくして: `,
-                `次の文章を50語以内で日本語でもっと楽しくして: `,
-                `次の単語を50語以内で使った詩を日本語で書いて: `,
-                `次の文章の続きを50語以内で日本語で書いて: `
-              ]
-            })
-          });
-        })
+      //
+      'Questions': folder({
+        '次の文章を50語以内で日本語でもっと具体的にして: ' : {
+          value: false,
+          onChange: sendQlist
+        },
+        '次の文章を50語以内で日本語でもっと悲しくして: ' : {
+          value: false,
+          onChange: sendQlist
+        },
+        '次の文章を50語以内で日本語でもっと楽しくして: ' : {
+          value: false,
+          onChange: sendQlist
+        },
+        '次の文章の続きを50語以内で日本語で書いて: ' : {
+          value: false,
+          onChange: sendQlist
+        },
+        '文中の名詞を日本語に変換してリストにしてください。英語は除外してください: ' : {
+          value: true,
+          onChange: sendQlist
+        },
       }),
     })
   }));
-  
+
   useEffect(() => {
     // TODO: tweaks
     let onWSMessage;
     let onWSopen;
+    let autoReload;
 
     if (location.search && location.search == '?mode=admin') {
       setAdmin(true);
@@ -232,7 +154,10 @@ export default function Preference() {
         socketRef.current = new WebSocket(`ws:${WS_HOST}:3001`);
         socketRef.current.addEventListener('open', onWSopen);
       })();
-
+    } else {
+      autoReload = setInterval(() => {
+        // location.href = '';
+      }, 60 * 1000);
     }
 
     return () => {
@@ -242,27 +167,15 @@ export default function Preference() {
         socketRef.current.close();
         socketRef.current = false;
       }
+
+      if (autoReload) {
+        clearInterval(autoReload);
+      }
     };
   }, []);
 
   return admin ? (
-    <>
-      <div
-        className="w-full fixed flex flex-col items-start top-0-0 p-4"
-        style={{ height: '50vh' }} >
-        <AgGridReact
-          ref={gridRef}
-          rowData={rowData}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          animateRows={true}
-          rowDragManaged={true}
-          rowSelection='multiple'
-        /* onRowDragEnd={updateSrcData} */
-        />
-      </div>
-      <Leva />
-    </>
+    <Leva />
   ) : (
     <Leva hidden />
   );

@@ -41,7 +41,7 @@ const wss = new WebSocketServer({
 // NOTE:
 let speaker;
 let userTextSources = [
-  `次の文章を50語以内で日本語でもっと具体的にして: `,
+  `文中の名詞を日本語に変換してリストにしてください。英語は除外してください: `,
 ];
 let rqInterval = fetchIntervalSleep;
 
@@ -158,6 +158,7 @@ const rq = async (loop = true) => {
     }
   } else if (rqInterval == 'skip') {
     console.log('skip');
+    await sleep(1000);
   } else {
     console.log('-');
   }
