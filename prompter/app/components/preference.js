@@ -9,6 +9,7 @@ export default function Preference() {
   const [admin, setAdmin] = useState(false);
 
   const qListRef = useRef(new Set());
+  const customIntervalRef = useRef('');
 
   const getParentPath = (path) => {
     return path.split('.').pop();
@@ -29,6 +30,33 @@ export default function Preference() {
         userTextSources: Array.from(qListRef.current)
       })
     });
+  };
+
+  const sendCustomInterval = () => {
+    let jsonv = false;
+    try {
+      jsonv = JSON.parse(`[${customIntervalRef.current}]`);
+    } catch (err) {
+      console.error(err);
+    }
+
+    try {
+      const [mode, ...rest] = jsonv;
+      if (
+        (mode == 'random' || mode == 'sample') &&
+        (rest.findIndex((el) => typeof el !== 'number') == -1) &&
+        rest.length > 1
+      ) {
+        window.fetch('/config', {
+          method: 'post',
+          body: JSON.stringify({ rqInterval: [mode, ...rest] })
+        });
+      } else {
+        console.error('Validation error');
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const ctl = useControls(() => ({
@@ -94,6 +122,13 @@ export default function Preference() {
             })
           });
         }),
+        custom: {
+          value: '',
+          onChange: (v) => {
+            customIntervalRef.current = v;
+          }
+        },
+        'send custom intervals': button(sendCustomInterval),
       }),
       //
       'Questions': folder({
