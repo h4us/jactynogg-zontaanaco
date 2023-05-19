@@ -18,6 +18,7 @@ class PuppeteerSpeaker {
       headless: false,
       timeout: 60 * 1000
     });
+
     this.client = await browser.newPage();
 
     await this.client.goto(this.url);
@@ -27,6 +28,14 @@ class PuppeteerSpeaker {
 
   async speak(msg) {
     // NOTE: google translation w/ puppetteer
+
+    if (this.client.isClosed) {
+      this.client = await browser.newPage();
+      await this.client.goto(this.url);
+      this.client.setDefaultTimeout(60 * 1000);
+      await this.client.setViewport({ width: 1080, height: 1024 });
+    }
+
     try {
       console.log('--start', new Date());
       await this.client.reload({ waitUntil: 'domcontentloaded' });
@@ -79,6 +88,13 @@ class PuppeteerSpeaker {
     }
 
     return await this.client.waitForTimeout(250);
+  }
+
+  abort() {
+    if (this.client && !this.client.isClosed) {
+      console.log('send abort signal');
+      this.client.close();
+    }
   }
 }
 

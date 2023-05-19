@@ -181,10 +181,16 @@ const runApp = async () => {
   // NOTE: APIs
   fastify
     .get('/env', (req, reply) => {
-      // TODO: response
       reply.send({
         WS_HOST, LAVIS_HOST, MJPEG_STREAMER_HOST, TEXT_POSITION
       });
+    })
+    .get('/abort', (req, reply) => {
+      if (speaker) {
+        console.log('abort spaker');
+        speaker.abort();
+      }
+      reply.send({ status: 'aborted' });
     })
     .post('/config', (req, reply) => {
       const {

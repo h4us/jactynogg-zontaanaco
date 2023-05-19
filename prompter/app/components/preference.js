@@ -62,6 +62,9 @@ export default function Preference() {
   const ctl = useControls(() => ({
     "Preference": folder({
       //
+      'Abort': folder({
+        abort: button(_ => { window.fetch('/abort'); }),
+      }),
       'Interval': folder({
         skip: button(_ => {
           window.fetch('/config', {
