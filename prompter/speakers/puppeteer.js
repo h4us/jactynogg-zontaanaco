@@ -30,13 +30,6 @@ class PuppeteerSpeaker {
   async speak(msg) {
     // NOTE: google translation w/ puppetteer
 
-    if (this.client.isClosed) {
-      this.client = await this.browser.newPage();
-      await this.client.goto(this.url);
-      this.client.setDefaultTimeout(60 * 1000);
-      await this.client.setViewport({ width: 1080, height: 1024 });
-    }
-
     try {
       console.log('--start', new Date());
       await this.client.reload({ waitUntil: 'domcontentloaded' });
@@ -92,9 +85,9 @@ class PuppeteerSpeaker {
   }
 
   abort() {
-    if (this.client && !this.client.isClosed) {
+    if (this.client) {
       console.log('send abort signal');
-      this.client.close();
+      this.client.reload();
     }
   }
 }
