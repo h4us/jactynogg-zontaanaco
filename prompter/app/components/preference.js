@@ -190,9 +190,7 @@ export default function Preference() {
         socketRef.current.addEventListener('open', onWSopen);
       })();
     } else {
-      autoReload = setInterval(() => {
-        // location.href = '';
-      }, 60 * 1000);
+      // TODO:
     }
 
     return () => {
