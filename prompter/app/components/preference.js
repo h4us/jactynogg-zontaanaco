@@ -10,6 +10,7 @@ export default function Preference() {
 
   const qListRef = useRef(new Set());
   const customIntervalRef = useRef('');
+  const customQuestionRef = useRef('');
 
   const getParentPath = (path) => {
     return path.split('.').pop();
@@ -50,6 +51,34 @@ export default function Preference() {
         window.fetch('/config', {
           method: 'post',
           body: JSON.stringify({ rqInterval: [mode, ...rest] })
+        });
+      } else {
+        console.error('Validation error');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const sendCustomQuestion = () => {
+    let jsonv = false;
+
+    try {
+      jsonv = JSON.parse(`[${customQuestionRef.current}]`);
+    } catch (err) {
+      console.error(err);
+    }
+
+    try {
+      if (
+        Array.isArray(jsonv) &&
+        (jsonv.findIndex((el) => typeof el !== 'string') == -1)
+      ) {
+        window.fetch('/config', {
+          method: 'post',
+          body: JSON.stringify({
+            userTextSources: jsonv
+          })
         });
       } else {
         console.error('Validation error');
@@ -155,6 +184,13 @@ export default function Preference() {
           value: true,
           onChange: sendQlist
         },
+        'custom question': {
+          value: '',
+          onChange: (v) => {
+            customQuestionRef.current = v;
+          }
+        },
+        'send custom question': button(sendCustomQuestion),
       }),
     })
   }));
