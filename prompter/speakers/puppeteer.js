@@ -5,6 +5,7 @@ class PuppeteerSpeaker {
   //
   url = 'https://translate.google.com/?hl=ja&sl=auto&tl=ja';
   client = null;
+  browser = null;
 
   // ...?
   qq = new PQueue({ concurrency: 1 });
@@ -14,11 +15,12 @@ class PuppeteerSpeaker {
   }
 
   async setup() {
-    const browser = await puppeteer.launch({
+    this.browser = await puppeteer.launch({
       headless: false,
       timeout: 60 * 1000
     });
-    this.client = await browser.newPage();
+
+    this.client = await this.browser.newPage();
 
     await this.client.goto(this.url);
     this.client.setDefaultTimeout(60 * 1000);
@@ -27,6 +29,7 @@ class PuppeteerSpeaker {
 
   async speak(msg) {
     // NOTE: google translation w/ puppetteer
+
     try {
       console.log('--start', new Date());
       await this.client.reload({ waitUntil: 'domcontentloaded' });
@@ -79,6 +82,13 @@ class PuppeteerSpeaker {
     }
 
     return await this.client.waitForTimeout(250);
+  }
+
+  abort() {
+    if (this.client) {
+      console.log('send abort signal');
+      this.client.reload();
+    }
   }
 }
 

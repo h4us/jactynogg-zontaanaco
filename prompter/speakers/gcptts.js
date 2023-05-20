@@ -6,6 +6,8 @@ const exec = promisify(_exec);
 
 class GCPTTSSpeaker {
   client = new TextToSpeech.TextToSpeechClient();
+  processed = null;
+  abortController = null
 
   async setup() {}
 
@@ -25,7 +27,17 @@ class GCPTTSSpeaker {
 
     await writeFile(`${ja_audio}`, response.audioContent, 'binary');
 
-    await exec(`ffplay -v 0 -nodisp -autoexit ${ja_audio}`);
+    this.abortController = new AbortController();
+    const { signal } = this.abortController;
+
+    this.processed = await exec(`ffplay -v 0 -nodisp -autoexit ${ja_audio}`, { signal });
+  }
+
+  abort() {
+    if (this.processed && this.abortController) {
+      console.log('send abort signal');
+      this.abortController.abort();
+    }
   }
 }
 

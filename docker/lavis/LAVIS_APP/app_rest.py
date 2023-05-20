@@ -29,49 +29,61 @@ def rest_endpoint():
     # model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="large_coco", is_eval=True, device=device)
     image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
 
-    caption = model.generate({"image": image}, use_nucleus_sampling=True, num_beams=3);
+    caption = model.generate({"image": image}, use_nucleus_sampling=True);
     return caption
 
-# class ConnectionManager:
-#     def __init__(self):
-#         self.active_connections: List[WebSocket] = []
+@app.get("/default")
+def rest_endpoint_default():
+    print('/default')
+    raw_frame = requests.get(f"http://{os.environ['MJPEG_STREAMER_HOST']}:8081/snapshot");
+    frame = BytesIO(raw_frame.content)
+    raw_image = Image.open(frame).convert("RGB")
 
-#     async def connect(self, websocket: WebSocket):
-#         await websocket.accept()
-#         self.active_connections.append(websocket)
+    model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
+    # model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="large_coco", is_eval=True, device=device)
+    image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
 
-#     def disconnect(self, websocket: WebSocket):
-#         self.active_connections.remove(websocket)
+    caption = model.generate({"image": image}, use_nucleus_sampling=True);
+    return caption
 
-#     async def send_personal_message(self, message: str, websocket: WebSocket):
-#         await websocket.send_text(message)
+@app.get("/m0")
+def rest_endpoint_m0():
+    print('/m0')
+    raw_frame = requests.get(f"http://{os.environ['MJPEG_STREAMER_HOST']}:8081/snapshot");
+    frame = BytesIO(raw_frame.content)
+    raw_image = Image.open(frame).convert("RGB")
 
-#     async def broadcast(self, message: str):
-#         for connection in self.active_connections:
-#             await connection.send_text(message)
+    model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
+    # model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="large_coco", is_eval=True, device=device)
+    image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
 
-# manager = ConnectionManager()
+    caption = model.generate({"image": image});
+    return caption
 
-# @app.websocket("/ws/{client_id}")
-# async def websocket_endpoint(websocket: WebSocket, client_id: str):
-#     await manager.connect(websocket)
-#     try:
-#         while True:
-#             data = await websocket.receive_text()
+@app.get("/m1")
+def rest_endpoint_m1():
+    print('/m1')
+    raw_frame = requests.get(f"http://{os.environ['MJPEG_STREAMER_HOST']}:8081/snapshot");
+    frame = BytesIO(raw_frame.content)
+    raw_image = Image.open(frame).convert("RGB")
 
-#             raw_frame = requests.get(f"http://{os.environ['MJPEG_STREAMER_HOST']}:8081/snapshot");
-#             frame = BytesIO(raw_frame.content)
-#             raw_image = Image.open(frame).convert("RGB")
+    model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
+    # model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="large_coco", is_eval=True, device=device)
+    image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
 
-#             model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
-#             image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
+    caption = model.generate({"image": image}, use_nucleus_sampling=True, top_p=0.85);
+    return caption
 
-#             caption = model.generate({"image": image});
-#             caption_json = ujson.dumps(caption)
-#             print(caption_json)
+@app.get("/m2")
+def rest_endpoint_m2():
+    print('/m2')
+    raw_frame = requests.get(f"http://{os.environ['MJPEG_STREAMER_HOST']}:8081/snapshot");
+    frame = BytesIO(raw_frame.content)
+    raw_image = Image.open(frame).convert("RGB")
 
-#             await manager.send_personal_message(f"{caption_json}", websocket)
-#             await manager.broadcast(f"${caption_json}")
-#     except WebSocketDisconnect:
-#         manager.disconnect(websocket)
-#         await manager.broadcast(f"Client #{client_id} left the chat")
+    model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
+    # model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="large_coco", is_eval=True, device=device)
+    image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
+
+    caption = model.generate({"image": image}, use_nucleus_sampling=True, top_p=0.975);
+    return caption

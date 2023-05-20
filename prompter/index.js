@@ -41,18 +41,20 @@ const wss = new WebSocketServer({
 // NOTE:
 let speaker;
 let userTextSources = [
-  `次の文章を50語以内で日本語でもっと具体的にして: `,
+  `文中の名詞を日本語に変換してリストにしてください。英語は除外してください: `,
 ];
 let rqInterval = fetchIntervalSleep;
+let lavisEndpoint = '';
 
 const rq = async (loop = true) => {
   console.log(rqInterval);
 
   if (rqInterval !== 'skip') {
     try {
-      const caption = await got.get(`http://${LAVIS_HOST}:8080`).json();
+      const caption = await got.get(`http://${LAVIS_HOST}:8080/${lavisEndpoint}`).json();
 
       let caption_j;
+      console.log(caption);
 
       // chatGPT
       const controller = new AbortController();
@@ -158,6 +160,7 @@ const rq = async (loop = true) => {
     }
   } else if (rqInterval == 'skip') {
     console.log('skip');
+    await sleep(1000);
   } else {
     console.log('-');
   }
@@ -180,22 +183,37 @@ const runApp = async () => {
   // NOTE: APIs
   fastify
     .get('/env', (req, reply) => {
-      // TODO: response
       reply.send({
         WS_HOST, LAVIS_HOST, MJPEG_STREAMER_HOST, TEXT_POSITION
       });
     })
+    .get('/abort', (req, reply) => {
+      if (speaker) {
+        console.log('abort spaker');
+        speaker.abort();
+      }
+      reply.send({ status: 'aborted' });
+    })
     .post('/config', (req, reply) => {
       const {
         rqInterval: _rqInterval,
-        userTextSources: _userTextSources
+        userTextSources: _userTextSources,
+        lavisEndpoint: _lavisEndpoint
       } = JSON.parse(req.body);
 
-      if (_rqInterval) { rqInterval = _rqInterval; }
-      if (_userTextSources) {
-        console.log(_userTextSources);
+      if (_rqInterval) {
+        console.info('set config', _rqInterval);
+        rqInterval = _rqInterval;
+      }
 
+      if (_userTextSources) {
+        console.info('set config', _userTextSources);
         userTextSources = _userTextSources;
+      }
+
+      if (_lavisEndpoint && (typeof _lavisEndpoint == 'string')) {
+        console.info('set config', _lavisEndpoint);
+        lavisEndpoint = _lavisEndpoint;
       }
 
       reply.send({ status: 1 });
