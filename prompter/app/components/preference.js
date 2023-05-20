@@ -192,6 +192,32 @@ export default function Preference() {
         },
         'send custom question': button(sendCustomQuestion),
       }),
+      'LAVIS': folder({
+        m_default: button(_ => {
+          window.fetch('/config', {
+            method: 'post',
+            body: JSON.stringify({ lavisEndpoint: 'default' })
+          });
+        }),
+        m0: button(_ => {
+          window.fetch('/config', {
+            method: 'post',
+            body: JSON.stringify({ lavisEndpoint: 'm0' })
+          });
+        }),
+        m1: button(_ => {
+          window.fetch('/config', {
+            method: 'post',
+            body: JSON.stringify({ lavisEndpoint: 'm1' })
+          });
+        }),
+        m2: button(_ => {
+          window.fetch('/config', {
+            method: 'post',
+            body: JSON.stringify({ lavisEndpoint: 'm2' })
+          });
+        }),
+      })
     })
   }));
 
