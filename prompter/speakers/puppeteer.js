@@ -3,7 +3,8 @@ import PQueue from 'p-queue';
 
 class PuppeteerSpeaker {
   //
-  url = 'https://translate.google.com/?hl=ja&sl=auto&tl=ja';
+  // url = 'https:translate.google.com/?hl=ja&sl=auto&tl=ja';
+  url = 'https:translate.google.com/?hl=ja&sl=auto&tl=zh-TW';
   client = null;
   browser = null;
 
@@ -42,12 +43,29 @@ class PuppeteerSpeaker {
       await this.client.type('textarea', msg);
 
       console.log('read new msg | ', msg);
-      await this.client.waitForSelector('*[data-language-name="日本語"]');
-      await this.client.waitForTimeout(500);
-      await this.client.click('*[data-language-name="日本語"]');
+      // await this.client.waitForSelector('*[data-language-name="日本語"]');
+      // await this.client.waitForTimeout(500);
+      // await this.client.click('*[data-language-name="日本語"]');
+      console.log('bang 1');
+
+      // await this.client.waitForSelector('button[aria-label="原文を聞く"]');
+      // await this.client.waitForTimeout(1000);
+      // await this.client.click('button[aria-label="原文を聞く"]');
+
+      // await this.client.waitForSelector('button[aria-label="原文を聞く"]');
+      // await this.client.waitForTimeout(1000);
+      // await this.client.click('button[aria-label="原文を聞く"]');
+
+      await this.client.waitForSelector('button[aria-label="翻訳を聞く"]');
+      await this.client.waitForTimeout(1000);
+      await this.client.click('button[aria-label="翻訳を聞く"]');
+
+      // await this.client.waitForSelector('*[data-language-name="中国語"]');
+      // await this.client.waitForTimeout(500);
+      // await this.client.click('*[data-language-name="中国語"]');
 
       // --
-      await this.client.waitForTimeout(250);
+      await this.client.waitForTimeout(200);
 
       const bState = await this.client.evaluateHandle(_ => { return { currentLength: 0, duration: NaN }; });
 
@@ -57,7 +75,7 @@ class PuppeteerSpeaker {
 
           const watchDog = setInterval(_ => {
             bs.duration = wdc;
-            bs.currentLength = document.querySelectorAll('button[aria-label="翻訳を聞く"]').length;
+            bs.currentLength = document.querySelectorAll('button[aria-label="原文を聞く"]').length;
 
             if (document.querySelectorAll('button[aria-label="翻訳を聞く"]').length > 0) {
               clearInterval(watchDog);
@@ -75,6 +93,7 @@ class PuppeteerSpeaker {
       };
 
       await this.client.evaluate(eFunc, bState).catch((e) => false);
+      console.log('bang');
       // --
       console.log('--end', new Date(), qq.size);
     } catch (err) {

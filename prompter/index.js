@@ -46,147 +46,25 @@ let userTextSources = [
 let rqInterval = fetchIntervalSleep;
 let lavisEndpoint = '';
 
-const rq = async (loop = true) => {
-  console.log(rqInterval);
-
-  if (rqInterval !== 'skip') {
-    try {
-      const caption = await got.get(`http://${LAVIS_HOST}:8080/${lavisEndpoint}`).json();
-
-      let caption_j;
-      console.log(caption);
-
-      // chatGPT
-      const controller = new AbortController();
-
-      const tc = setTimeout(() => {
-        controller.abort();
-        console.error('-- timeout gpt');
-      }, 7 * 1000);
-
-      const uts = userTextSources.map((el) => `${el} "${caption[0]}"`);
-      console.info(uts);
-
-      const messages = [
-        {
-          "role": "system",
-          "content": sample([
-            "You are a helpful assistant.",
-          ])
-        },
-        {
-          "role": "user",
-          "content": sample(uts)
-        }
-      ];
-
-      console.info(messages);
-
-      try {
-        const completion = await openai.createChatCompletion({
-          model: "gpt-3.5-turbo",
-          max_tokens: 100,
-          messages
-        }, {
-          signal: controller.signal,
-        });
-
-        console.info('gpt: ', completion.data.choices[0].message.content);
-
-        caption_j = {
-          translations: [
-            { text: completion.data.choices[0].message.content }
-          ]
-        };
-
-        clearTimeout(tc);
-      } catch (ierr) {
-        console.error('gpt response err?', ierr.type, ierr.message);
-
-        // deepL
-        caption_j = await got.post('https://api-free.deepl.com/v2/translate', {
-          headers: {
-            Authorization: `DeepL-Auth-Key ${DEEPL_API_KEY}`
-          },
-          form: {
-            text: caption[0],
-            source_lang: 'EN',
-            target_lang: 'JA'
-          }
-        }).json();
-
-        clearTimeout(tc);
-      }
-
-      const { translations = [] } = caption_j;
-
-      // NOTE: send telop and read
-      if (translations.length > 0) {
-        if (wss.clients.size > 0) {
-          wss.clients.forEach((el) => el.send(JSON.stringify([translations[0].text])));
-        }
-
-        //! NOTE: reading
-        if (speaker) {
-          await speaker.speak(translations[0].text);
-        }
-
-      } else {
-        if (wss.clients.size > 0) {
-          wss.clients.forEach((el) => el.send(JSON.stringify(t)));
-        }
-      }
-      // --
-    } catch (err) {
-      console.error(err.type, err.message);
-    }
-
-  }
-
-  // NOTE: wait
-  if (typeof rqInterval == 'number') {
-    console.log('sleep', rqInterval);
-    await sleep(rqInterval);
-  } else if (Array.isArray(rqInterval)) {
-    const [mode, ...rest] = rqInterval;
-
-    console.log('range?', mode, rest);
-
-    if (mode == 'sample') {
-      await sleep(sample(rest));
-    } else {
-      const [lv, hv] = rest;
-      await sleep(random(lv, hv));
-    }
-  } else if (rqInterval == 'skip') {
-    console.log('skip');
-    await sleep(1000);
-  } else {
-    console.log('-');
-  }
-
-  if (loop) { rq(); }
-};
-
 const fastify = Fastify({
   // logger: true
   logger: { level: 'error' },
 });
 
 const runApp = async () => {
-  fastify
-    .register(FastifyNext)
-    .after(() => {
-      fastify.next('/');
-    });
+  // fastify
+  //   .register(FastifyNext)
+  //   .after(() => {
+  //     fastify.next('/');
+  //   });
 
   // NOTE: APIs
   fastify
-    .get('/env', (req, reply) => {
-      reply.send({
-        WS_HOST, LAVIS_HOST, MJPEG_STREAMER_HOST, TEXT_POSITION
-      });
-    })
+    // .get('/env', (req, reply) => {
+    //   reply.send({
+    //     WS_HOST, LAVIS_HOST, MJPEG_STREAMER_HOST, TEXT_POSITION
+    //   });
+    // })
     .get('/abort', (req, reply) => {
       if (speaker) {
         console.log('abort spaker');
@@ -194,30 +72,53 @@ const runApp = async () => {
       }
       reply.send({ status: 'aborted' });
     })
-    .post('/config', (req, reply) => {
+    .get('/speak', (req, reply) => {
+      const { query = {} } = req;
+      const { msg = '' } = query;
+
+      if (speaker) {
+        speaker.speak(msg);
+      }
+
+      reply.send({ status: 1 });
+    })
+    .post('/speak', (req, reply) => {
       const {
         rqInterval: _rqInterval,
         userTextSources: _userTextSources,
         lavisEndpoint: _lavisEndpoint
       } = JSON.parse(req.body);
 
-      if (_rqInterval) {
-        console.info('set config', _rqInterval);
-        rqInterval = _rqInterval;
-      }
-
-      if (_userTextSources) {
-        console.info('set config', _userTextSources);
-        userTextSources = _userTextSources;
-      }
-
-      if (_lavisEndpoint && (typeof _lavisEndpoint == 'string')) {
-        console.info('set config', _lavisEndpoint);
-        lavisEndpoint = _lavisEndpoint;
+      if (speaker) {
+        speaker.speak('test');
       }
 
       reply.send({ status: 1 });
     });
+    // .post('/config', (req, reply) => {
+    //   const {
+    //     rqInterval: _rqInterval,
+    //     userTextSources: _userTextSources,
+    //     lavisEndpoint: _lavisEndpoint
+    //   } = JSON.parse(req.body);
+
+    //   if (_rqInterval) {
+    //     console.info('set config', _rqInterval);
+    //     rqInterval = _rqInterval;
+    //   }
+
+    //   if (_userTextSources) {
+    //     console.info('set config', _userTextSources);
+    //     userTextSources = _userTextSources;
+    //   }
+
+    //   if (_lavisEndpoint && (typeof _lavisEndpoint == 'string')) {
+    //     console.info('set config', _lavisEndpoint);
+    //     lavisEndpoint = _lavisEndpoint;
+    //   }
+
+    //   reply.send({ status: 1 });
+    // });
 
   // NOTE: speaker
   if (SPEAKER_TYPE == 'gcp-tts') {
@@ -247,7 +148,7 @@ const runApp = async () => {
   });
 
   // NOTE: start loop
-  rq();
+  // rq();
 
   try {
     await fastify.listen({ host: '::', port: 3000 });

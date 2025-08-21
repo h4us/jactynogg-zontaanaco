@@ -1,0 +1,27 @@
+{
+  "name": "prompter-hub",
+  "version": "0.0.1",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "dev-allm": "nodemon allm.js",
+    "test:obsws": "dotenv -e .env -- nodemon obsws.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@lmstudio/sdk": "^1.4.0",
+    "dotenv": "^17.2.1",
+    "got": "^14.4.7",
+    "node-osc": "^10.0.0",
+    "obs-websocket-js": "^5.0.6",
+    "openai": "^5.12.0",
+    "p-queue": "^8.1.0"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^10.0.0",
+    "nodemon": "^3.1.10"
+  }
+}
