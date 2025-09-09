@@ -14,10 +14,17 @@ class GCPTTSSpeaker {
   oscClientRef = null
 
   async setup(replyOSCClient = null, speakerConfig = {}) {
+    // TODO: manage config
     this.speakerConfig = {
-      languageCode: 'ja-JP',
       ssmlGender: 'MALE',
-      name: 'ja-JP-Neural2-D',
+      //
+      // languageCode: 'ja-JP',
+      // name: 'ja-JP-Neural2-D', // male
+      languageCode: 'cmn-TW',
+      // name: 'cmn-TW-Standard-A', // female
+      // name: 'cmn-TW-Wavenet-A', // female
+      // name: 'cmn-TW-Standard-B', // male
+      name: 'cmn-TW-Wavenet-B', // male
       ...speakerConfig
     };
 
