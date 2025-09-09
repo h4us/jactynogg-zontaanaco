@@ -23,7 +23,7 @@
 #X obj 309 99 bng 25 250 50 0 empty empty empty 17 7 0 10 #e4e4e4 #4d4d4d #373737;
 #X obj 106 414 bng 25 250 50 0 empty empty empty 17 7 0 10 #e4e4e4 #4d4d4d #373737;
 #X obj 117 64 osc.route /done /speak_ready /speak_done /speak_opt;
-#N canvas 733 172 450 300 speak-c1 0;
+#N canvas 733 172 450 300 speak-c1 1;
 #X obj 238 131 sfload sp1;
 #N canvas 0 0 450 250 (subpatch) 0;
 #X array sp1 451008 float 2;
@@ -46,6 +46,7 @@
 #X obj 329 32 inlet;
 #X obj 407 317 print speak_done_c1;
 #X obj 350 317 outlet;
+#X symbolatom 350 77 15 0 0 0 - - - 16;
 #X connect 0 0 7 0;
 #X connect 0 0 2 0;
 #X connect 3 0 15 0;
@@ -64,6 +65,7 @@
 #X connect 13 0 17 0;
 #X connect 14 0 12 0;
 #X connect 16 0 6 0;
+#X connect 19 0 10 0;
 #X coords 0 0 1 1 214 172 2 0 0;
 #X restore 400 142 pd speak-c1;
 #X obj 528 366 osc~ 80;
