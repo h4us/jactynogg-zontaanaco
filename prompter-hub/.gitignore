@@ -38,4 +38,4 @@ next-env.d.ts
 .env
 .credentials
 tmp*
-!tmp_audio/*.pd
+!tmp_audio/_player.pd
