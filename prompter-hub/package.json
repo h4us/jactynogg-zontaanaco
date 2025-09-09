@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "nodemon index.js",
     "dev-allm": "nodemon allm.js",
+    "dev-allm-remote": "dotenv -v OSC_RECV_PORT=9998 -v ENABLE_SPEAKER=0 -v CAPTURE_SRC_REMOTE=rpicamera-2 -- nodemon allm.js",
     "test:obsws": "dotenv -e .env -- nodemon _tools/obsws.js",
     "test:lmd-openai": "dotenv -e .env -- nodemon _tools/openai-api-test.js",
     "test:allm-openai": "dotenv -e .env -- nodemon _tools/allm-openai-api-test.js",
-    "test:speak": "dotenv -e .env -- nodemon _tools/spkr-test.js",
+    "tool:speak-proxy": "dotenv -e .env -- nodemon _tools/spkr-test.js",
     "tool:dl-history": "dotenv -e .env -- nodemon _tools/allm-chat-log.js"
   },
   "author": "",
@@ -19,6 +20,7 @@
     "@google-cloud/text-to-speech": "^6.3.0",
     "@lmstudio/sdk": "^1.4.0",
     "dotenv": "^17.2.1",
+    "fastify": "^5.6.0",
     "got": "^14.4.7",
     "node-json2html": "^3.3.3",
     "node-osc": "^10.0.0",

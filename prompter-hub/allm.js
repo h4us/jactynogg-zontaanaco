@@ -13,38 +13,33 @@ import GCPTTSSpeaker from './_speakers/gcptts.js';
 // NOTE: .env
 const {
   OBS_HOST = false,
+  PROXYBACK_HOST = 'http://0.0.0.0:7777',
   LM_STUDIO_HOST = 'ws://0.0.0.0:1234',
-  ANYTHINGLLM_HOST = 'http://0.0.0.0:3001',
+  ANYTHINGLLM_HOST = false,
   ANYTHINGLLM_APIKEY = '',
   ANYTHINGLLM_TARGET_WORKSPACE = '',
   ANYTHINGLLM_TARGET_THREAD = false,
   //
+  ANYTHINGLLM_HOST_REMOTE = false,
   ANYTHINGLLM_APIKEY_REMOTE,
-  ANYTHINGLLM_HOST_REMOTE,
   ANYTHINGLLM_TARGET_WORKSPACE_REMOTE,
-  ANYTHINGLLM_TARGET_THREAD_REMOTE
+  ANYTHINGLLM_TARGET_THREAD_REMOTE,
+  //
+  CAPTURE_SRC_LOCAL = '',
+  CAPTURE_SRC_REMOTE = '',
+  //
+  OSC_RECV_PORT = 9999,
+  ENABLE_SPEAKER = 1
 } = process.env;
 
-let pInfo = false;
-let targetThread = false;
 let counts = 0;
 let obs = false;
 let obsConnected = false;
 
-const oscServer = new OSCServer(9999, '0.0.0.0');
+const oscServer = new OSCServer(parseInt(OSC_RECV_PORT), '0.0.0.0');
 const oscClient = new OSCClient('0.0.0.0', 12000);
 
 const speaker = new GCPTTSSpeaker();
-
-const got_cl = got.extend({
-  hooks: {
-    beforeRequest: [
-      options => {
-        options.headers['Authorization'] = 'Bearer ' + ANYTHINGLLM_APIKEY;
-      }
-    ]
-  }
-});
 
 const allmConfigRequest = async (target) => {
   const { ALLM_APIKEY, ALLM_HOST, ALLM_WORKSPACE, ALLM_THREAD } = target;
@@ -110,9 +105,10 @@ const allmConfigRequest = async (target) => {
 
 
 const allmChatRequest = async (target, chat, imgs = [], reset = false) => {
-  console.info(target);
-
   const { client, ALLM_HOST, ALLM_WORKSPACE, ALLM_THREAD_SLUG } = target;
+
+  console.log(ALLM_HOST, ALLM_WORKSPACE, ALLM_THREAD_SLUG);
+
   const jsonData = {
     'message': chat,
     'mode': "chat",
@@ -157,7 +153,7 @@ const main = async () => {
   await mkdir(resolve('./tmp_audio')).catch(_ => false);
 
   //
-  await speaker.setup(oscClient);
+  if (parseInt(ENABLE_SPEAKER) == 1) await speaker.setup(oscClient);
 
   // --
   // pInfo = await got_cl.get(`${ANYTHINGLLM_HOST}/api/v1/auth`, {
@@ -175,7 +171,6 @@ const main = async () => {
   });
 
   // -- remote
-  console.log('remote-config!');
 
   const remoteConfig = await allmConfigRequest({
     ALLM_APIKEY: ANYTHINGLLM_APIKEY_REMOTE,
@@ -184,6 +179,8 @@ const main = async () => {
     ALLM_THREAD: ANYTHINGLLM_TARGET_THREAD_REMOTE
   });
   // --
+
+  console.log('stettings: ', parseInt(OSC_RECV_PORT), parseInt(ENABLE_SPEAKER));
 
   oscServer.on('error', async (e) => {
     console.error('err!', e);
@@ -198,6 +195,7 @@ const main = async () => {
 
     if (addr == '/capture') {
       if (OBS_HOST && obs) {
+
         res = await obs.call('GetSourceScreenshot', {
           imageFormat: 'jpeg',
           sourceName: data[0],
@@ -218,37 +216,72 @@ const main = async () => {
 
       if (res !== false) {
         // -- TODO: multi head
-        const rres = await allmChatRequest(
-          localConfig,
-          // counts < 1 ? '実況してください。' : '続きを実況してください。',
-          '指示に基づいて現在の場面を実況してください。',
-          // '現在の場面について説明しなさい。',
-          // '現在の画像に写っているものを列挙しなさい。',
-          [res.imageData],
-          (counts == 0)
-          // true
-        );
+        if (CAPTURE_SRC_LOCAL == data[0]) {
+          const rres = await allmChatRequest(
+            localConfig,
+            // counts < 1 ? '実況してください。' : '続きを実況してください。',
+            '指示に基づいて現在の場面を実況してください。',
+            // '現在の場面について説明しなさい。',
+            // '現在の画像に写っているものを列挙しなさい。',
+            [res.imageData],
+            (localConfig.counts == 0)
+            // true
+          );
 
-        if (rres && rres.type == 'textResponse') {
-          console.info(rres);
+          if (rres && rres.type == 'textResponse') {
+            console.info(rres);
 
-          const content = rres[rres.type];
-          console.log(content);
+            const content = rres[rres.type];
+            console.log(content);
 
-          // TODO:
-          writeFile(
-            resolve('./tmp_text', 'caption1.txt'), content
-          ).catch(_ => false);
+            // TODO:
+            writeFile(
+              resolve('./tmp_text', 'caption1.txt'), content
+            ).catch(_ => false);
 
-          if (speaker) { speaker.speak(content); }
-          // await got.get(`http:localhost:3000/speak?msg=${lines[0]}`, {}).json().catch(_ => false);
+            if (speaker) { speaker.speak(content); }
+            // await got.get(`http:localhost:3000/speak?msg=${lines[0]}`, {}).json().catch(_ => false);
 
-          oscClient.send('/done', data[0]);
+            oscClient.send('/done', data[0]);
+          }
+
+          console.info('-- local -- ', localConfig.counts);
+          localConfig.counts++;
         }
 
-        console.info('-- ', counts);
+        if (CAPTURE_SRC_REMOTE == data[0]) {
+          const rres = await allmChatRequest(
+            remoteConfig,
+            '指示に基づいて現在の場面を実況してください。',
+            [res.imageData],
+            (remoteConfig.counts == 0)
+          );
 
-        counts ++;
+          if (rres && rres.type == 'textResponse') {
+            console.info(rres);
+
+            const content = rres[rres.type];
+            console.log(content);
+
+            // TODO:
+            writeFile(
+              resolve('./tmp_text', 'caption2.txt'), content
+            ).catch(_ => false);
+
+            await got.post(
+              `${PROXYBACK_HOST}/speak`,
+              {
+                responseType: 'json',
+                json: { content }
+              }).json().catch(error => {
+                return error;
+              });
+          }
+
+          console.info('-- remote -- ', remoteConfig.counts);
+
+          remoteConfig.counts++;
+        }
         // --
       }
     }
