@@ -4,8 +4,6 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { OBSWebSocket } from 'obs-websocket-js';
 import { Server as OSCServer, Client as OSCClient } from 'node-osc';
 
-import got from 'got';
-
 import 'dotenv/config';
 
 // NOTE: .env
@@ -18,16 +16,6 @@ let obsConnected = false;
 
 const oscServer = new OSCServer(9999, '0.0.0.0');
 const oscClient = new OSCClient('0.0.0.0', 12000);
-
-const got_cl = got.extend({
-  hooks: {
-    beforeRequest: [
-      options => {
-        options.headers['Authorization'] = 'Bearer ' + ANYTHINGLLM_APIKEY;
-      }
-    ]
-  }
-});
 
 let pInfo = false;
 let targetThread = false;
