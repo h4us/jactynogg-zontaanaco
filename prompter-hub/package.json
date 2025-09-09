@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
-    "dev-allm": "nodemon allm.js",
-    "dev-allm-remote": "dotenv -v OSC_RECV_PORT=9998 -v ENABLE_SPEAKER=0 -v CAPTURE_SRC_REMOTE=rpicamera-2 -- nodemon allm.js",
+    "dev-allm": "node allm.js",
+    "dev-allm-remote": "dotenv -v OSC_RECV_PORT=9998 -v ENABLE_SPEAKER=0 -v CAPTURE_SRC_REMOTE=rpicamera-2 -- node allm.js",
     "test:obsws": "dotenv -e .env -- nodemon _tools/obsws.js",
     "test:lmd-openai": "dotenv -e .env -- nodemon _tools/openai-api-test.js",
     "test:allm-openai": "dotenv -e .env -- nodemon _tools/allm-openai-api-test.js",

@@ -69,7 +69,7 @@ const allmConfigRequest = async (target) => {
 
     if (ALLM_THREAD) {
       const ti = ws_first.threads.findIndex((el) => el.name == ALLM_THREAD);
-      targetThread = ws_first.threads[(ti > 0) ? ti : 0];
+      targetThread = ws_first.threads[(ti < 0) ? 0 : ti];
     } else {
       targetThread = ws_first.threads[0];
     }
@@ -220,7 +220,7 @@ const main = async () => {
           const rres = await allmChatRequest(
             localConfig,
             // counts < 1 ? '実況してください。' : '続きを実況してください。',
-            '指示に基づいて現在の場面を実況してください。',
+            'コンテキストに基づいて現在の場面を中国語（繁体字）で実況テキストを作成しなさい。',
             // '現在の場面について説明しなさい。',
             // '現在の画像に写っているものを列挙しなさい。',
             [res.imageData],
@@ -252,7 +252,7 @@ const main = async () => {
         if (CAPTURE_SRC_REMOTE == data[0]) {
           const rres = await allmChatRequest(
             remoteConfig,
-            '指示に基づいて現在の場面を実況してください。',
+            'コンテキストに基づいて現在の場面を中国語（繁体字）で実況テキストを作成しなさい。',
             [res.imageData],
             (remoteConfig.counts == 0)
           );
