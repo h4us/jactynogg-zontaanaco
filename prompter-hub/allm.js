@@ -5,6 +5,7 @@ import { OBSWebSocket } from 'obs-websocket-js';
 import { Server as OSCServer, Client as OSCClient } from 'node-osc';
 
 import got from 'got';
+import { DateTime } from 'luxon';
 
 import 'dotenv/config';
 
@@ -211,7 +212,7 @@ const main = async () => {
           ).catch(_ => false);
         }
 
-        console.log('capture done');
+        console.log('capture done', data[0], DateTime.now().toString());
       }
 
       if (res !== false) {
@@ -220,7 +221,7 @@ const main = async () => {
           const rres = await allmChatRequest(
             localConfig,
             // counts < 1 ? '実況してください。' : '続きを実況してください。',
-            'コンテキストに基づいて現在の場面を中国語（繁体字）で実況テキストを作成しなさい。',
+            'コンテキストに基づいて現在の場面の実況テキストを作成しなさい。',
             // '現在の場面について説明しなさい。',
             // '現在の画像に写っているものを列挙しなさい。',
             [res.imageData],
@@ -231,28 +232,31 @@ const main = async () => {
           if (rres && rres.type == 'textResponse') {
             console.info(rres);
 
-            const content = rres[rres.type];
+            let content = rres[rres.type];
             console.log(content);
 
-            // TODO:
-            writeFile(
-              resolve('./tmp_text', 'caption1.txt'), content
-            ).catch(_ => false);
+            // const [en_c, ch_c = ''] = content.split('|');
+            content = content.replace(/[\r\n]/g, '');
+            const en_c = content.replace(/^.*en\{(.*)\}\|.*$/, '$1');
+            const ch_c = content.replace(/^.*\|ch\{(.*)\}.*$/, '$1');
 
-            if (speaker) { speaker.speak(content); }
-            // await got.get(`http:localhost:3000/speak?msg=${lines[0]}`, {}).json().catch(_ => false);
+            // TODO:
+            writeFile(resolve('./tmp_text', 'caption1-alt.txt'), en_c).catch(_ => false);
+            writeFile(resolve('./tmp_text', 'caption1.txt'), ch_c).catch(_ => false);
+
+            if (speaker) { speaker.speak(ch_c.length == 0 ? '' : ch_c); }
 
             oscClient.send('/done', data[0]);
           }
 
-          console.info('-- local -- ', localConfig.counts);
+          console.info('-- local -- ', localConfig.counts, DateTime.now().toString());
           localConfig.counts++;
         }
 
         if (CAPTURE_SRC_REMOTE == data[0]) {
           const rres = await allmChatRequest(
             remoteConfig,
-            'コンテキストに基づいて現在の場面を中国語（繁体字）で実況テキストを作成しなさい。',
+            'コンテキストに基づいて現在の場面の実況テキストを作成しなさい。',
             [res.imageData],
             (remoteConfig.counts == 0)
           );
@@ -260,25 +264,31 @@ const main = async () => {
           if (rres && rres.type == 'textResponse') {
             console.info(rres);
 
-            const content = rres[rres.type];
+            let content = rres[rres.type];
             console.log(content);
 
+            // const [en_c, ch_c = ''] = content.split('|');
+            content = content.replace(/[\r\n]/g, '');
+            // const en_c = content.replace(/^.*en\{(.*)\}/, '$1');
+            // const ch_c = content.replace(/^.*ch\{(.*)\}/, '$1');
+            const en_c = content.replace(/^.*en\{(.*)\}\|.*$/, '$1');
+            const ch_c = content.replace(/^.*\|ch\{(.*)\}.*$/, '$1');
+
             // TODO:
-            writeFile(
-              resolve('./tmp_text', 'caption2.txt'), content
-            ).catch(_ => false);
+            writeFile(resolve('./tmp_text', 'caption2-alt.txt'), en_c).catch(_ => false);
+            writeFile(resolve('./tmp_text', 'caption2.txt'), ch_c).catch(_ => false);
 
             await got.post(
               `${PROXYBACK_HOST}/speak`,
               {
                 responseType: 'json',
-                json: { content }
+                json: { content: ch_c }
               }).json().catch(error => {
                 return error;
               });
           }
 
-          console.info('-- remote -- ', remoteConfig.counts);
+          console.info('-- remote -- ', remoteConfig.counts, DateTime.now().toString());
 
           remoteConfig.counts++;
         }

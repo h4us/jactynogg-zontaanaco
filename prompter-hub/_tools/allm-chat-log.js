@@ -11,7 +11,8 @@ import 'dotenv/config';
 const {
   ANYTHINGLLM_HOST = 'http://0.0.0.0:3001',
   ANYTHINGLLM_APIKEY = '',
-  ANYTHINGLLM_TARGET_WORKSPACE = ''
+  ANYTHINGLLM_TARGET_WORKSPACE = '',
+  ANYTHINGLLM_TARGET_THREAD = ''
 } = process.env;
 
 const got_cl = got.extend({
@@ -257,15 +258,19 @@ const main = async () => {
 
     console.log(ws_first.threads);
 
-    if (ws_first.threads.length > 0) {
-      targetWS = ws_first;
-      targetThread = ws_first.threads[0].slug;
+    targetWS = ws_first;
+
+    if (ANYTHINGLLM_TARGET_THREAD) {
+      const ti = ws_first.threads.findIndex((el) => el.name == ANYTHINGLLM_TARGET_THREAD);
+      targetThread = ws_first.threads[(ti < 0) ? 0 : ti];
+    } else {
+      targetThread = ws_first.threads[0];
     }
   }
 
   // --
   let ret = await got_cl.get(
-    `${ANYTHINGLLM_HOST}/api/v1/workspace/${ANYTHINGLLM_TARGET_WORKSPACE}${targetThread ? ('/thread/' + targetThread) : ''}/chats`, {
+    `${ANYTHINGLLM_HOST}/api/v1/workspace/${ANYTHINGLLM_TARGET_WORKSPACE}${targetThread ? ('/thread/' + targetThread.slug) : ''}/chats`, {
     responseType: 'json',
   }).json().catch(error => {
     console.error(error);
