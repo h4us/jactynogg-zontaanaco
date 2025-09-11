@@ -268,24 +268,37 @@ const main = async () => {
             console.log(content);
 
             // const [en_c, ch_c = ''] = content.split('|');
-            content = content.replace(/[\r\n]/g, '');
+            // content = content.replace(/[\r\n]/g, '');
+
+            try {
+              let [en_c = ''] = content.match(/en\{([^}]+)\}/g);
+              let [ch_c = ''] = content.match(/ch\{([^}]+)\}/g);
+
+              en_c = en_c.replace(/(en\{)|(\})/g, '');
+              ch_c = ch_c.replace(/(ch\{)|(\})/g, '');
+
+              // TODO:
+              writeFile(resolve('./tmp_text', 'caption2-alt.txt'), en_c).catch(_ => false);
+              writeFile(resolve('./tmp_text', 'caption2.txt'), ch_c).catch(_ => false);
+
+              await got.post(
+                `${PROXYBACK_HOST}/speak`,
+                {
+                  responseType: 'json',
+                  json: { content: ch_c }
+                }).json().catch(error => {
+                  return error;
+                });
+            } catch (err) {
+              console.error('parse error, skip..');
+
+              return;
+            }
+
             // const en_c = content.replace(/^.*en\{(.*)\}/, '$1');
             // const ch_c = content.replace(/^.*ch\{(.*)\}/, '$1');
-            const en_c = content.replace(/^.*en\{(.*)\}\|.*$/, '$1');
-            const ch_c = content.replace(/^.*\|ch\{(.*)\}.*$/, '$1');
-
-            // TODO:
-            writeFile(resolve('./tmp_text', 'caption2-alt.txt'), en_c).catch(_ => false);
-            writeFile(resolve('./tmp_text', 'caption2.txt'), ch_c).catch(_ => false);
-
-            await got.post(
-              `${PROXYBACK_HOST}/speak`,
-              {
-                responseType: 'json',
-                json: { content: ch_c }
-              }).json().catch(error => {
-                return error;
-              });
+            // const en_c = content.replace(/^.*en\{(.*)\}\|.*$/, '$1');
+            // const ch_c = content.replace(/^.*\|ch\{(.*)\}.*$/, '$1');
           }
 
           console.info('-- remote -- ', remoteConfig.counts, DateTime.now().toString());
