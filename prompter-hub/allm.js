@@ -10,6 +10,8 @@ import { DateTime } from 'luxon';
 import 'dotenv/config';
 
 import GCPTTSSpeaker from './_speakers/gcptts.js';
+import CaptionMaker from './_tools/captionmaker.js';
+import CaptureMaker from './_tools/capturemaker.js';
 
 // NOTE: .env
 const {
@@ -42,9 +44,15 @@ const oscClient = new OSCClient('0.0.0.0', 12000);
 
 const speaker = new GCPTTSSpeaker();
 
+const agvCaptionMaker = new CaptionMaker();
+const segwayCaptionMaker = new CaptionMaker();
+
+const agvCaptureMaker = new CaptureMaker();
+const segwayCaptureMaker = new CaptureMaker();
+
 const allmConfigRequest = async (target) => {
   const { ALLM_APIKEY, ALLM_HOST, ALLM_WORKSPACE, ALLM_THREAD } = target;
-  let targetThread = {};
+  let targetThread = false;
   let counts = 0;
 
   const got_cl = got.extend({
@@ -61,9 +69,11 @@ const allmConfigRequest = async (target) => {
     responseType: 'json',
   }).json().catch(error => {
     console.error(error);
+
+    return false;
   });
 
-  if (pInfo.workspaces) {
+  if (pInfo && pInfo.workspaces) {
     const [ws_first, ...ws_rest] = pInfo.workspaces.filter((el) => el.slug == ALLM_WORKSPACE);
     console.info('found workspace: ', ws_first);
     console.info('found threads: ', ws_first.threads);
@@ -74,34 +84,32 @@ const allmConfigRequest = async (target) => {
     } else {
       targetThread = ws_first.threads[0];
     }
-  }
 
-  let test_ret = await got_cl.get(`${ALLM_HOST}/api/v1/workspace/${ALLM_WORKSPACE}/thread/${targetThread.slug}/chats`, {
-    responseType: 'json',
-  }).json().catch(error => {
-    console.error(error);
+    let test_ret = await got_cl.get(`${ALLM_HOST}/api/v1/workspace/${ALLM_WORKSPACE}/thread/${targetThread.slug}/chats`, {
+      responseType: 'json',
+    }).json().catch(error => {
+      console.error(error);
 
-    return false;
-  });
+      return false;
+    });
 
-  if (test_ret && test_ret['history']) {
-    const [h1, ...h_rest] = test_ret['history'];
-    console.info(`thread <${targetThread.name}> start with.. `, h1);
-    if (h_rest && h_rest.length > 0) {
-      //
-      counts = test_ret['history'].length;
-      //
-      console.info(`..end @${counts}, with `, h_rest.pop());
+    if (test_ret && test_ret['history']) {
+      const [h1, ...h_rest] = test_ret['history'];
+      console.info(`thread <${targetThread.name}> start with.. `, h1);
+      if (h_rest && h_rest.length > 0) {
+        counts = test_ret['history'].length;
+        console.info(`..end @${counts}, with `, h_rest.pop());
+      }
     }
   }
 
-  return {
+  return targetThread ? {
     ALLM_HOST,
     ALLM_WORKSPACE,
     ALLM_THREAD_SLUG: targetThread.slug,
     counts,
     client: got_cl
-  };
+  } : {};
 };
 
 
@@ -113,7 +121,6 @@ const allmChatRequest = async (target, chat, imgs = [], reset = false) => {
   const jsonData = {
     'message': chat,
     'mode': "chat",
-    // "userId": 1,
     'reset': reset
   };
 
@@ -144,26 +151,28 @@ const main = async () => {
 
     await obs.disconnect();
     obsConnected = await obs.connect(OBS_HOST).catch((err) => { console.error(err); return false; });
-
     // const obsv = await obs.call('GetVersion');
   }
 
   //
   await mkdir(resolve('./tmp')).catch(_ => false);
-  await mkdir(resolve('./tmp_text')).catch(_ => false);
   await mkdir(resolve('./tmp_audio')).catch(_ => false);
+  // await mkdir(resolve('./tmp_text')).catch(_ => false);
 
   //
   if (parseInt(ENABLE_SPEAKER) == 1) await speaker.setup(oscClient);
 
-  // --
-  // pInfo = await got_cl.get(`${ANYTHINGLLM_HOST}/api/v1/auth`, {
-  //   responseType: 'json',
-  // }).json().catch(error => {
-  //   console.error(error);
-  // });
-  // console.log('/auth', pInfo);
+  await agvCaptionMaker.setup(obs, {
+    captionName1: 'caption-2',
+    captionName2: 'caption-2-alt',
+    captionName3: 'caption-2-opt'
+  });
+  await segwayCaptionMaker.setup(obs);
 
+  await agvCaptureMaker.setup(obs, { captureName: 'capture-2' });
+  await segwayCaptureMaker.setup(obs);
+
+  // -- local
   const localConfig = await allmConfigRequest({
     ALLM_APIKEY: ANYTHINGLLM_APIKEY,
     ALLM_HOST: ANYTHINGLLM_HOST ,
@@ -172,42 +181,55 @@ const main = async () => {
   });
 
   // -- remote
-
   const remoteConfig = await allmConfigRequest({
     ALLM_APIKEY: ANYTHINGLLM_APIKEY_REMOTE,
     ALLM_HOST: ANYTHINGLLM_HOST_REMOTE,
     ALLM_WORKSPACE: ANYTHINGLLM_TARGET_WORKSPACE_REMOTE,
     ALLM_THREAD: ANYTHINGLLM_TARGET_THREAD_REMOTE
   });
-  // --
 
   console.log('stettings: ', parseInt(OSC_RECV_PORT), parseInt(ENABLE_SPEAKER));
 
   oscServer.on('error', async (e) => {
     console.error('err!', e);
-    return 1;
+    return -1;
   });
 
   oscServer.on('message', async (e) => {
     const [addr, ...data] = e;
-    const fname = `${Date.now()}.jpg`;
     let res = false;
     let toFile = false;
 
-    if (addr == '/capture') {
-      if (OBS_HOST && obs) {
+    // console.log(addr);
 
+    if (/^\/speak_end\/.*/.test(addr)) {
+      console.log('uncapture', addr);
+      if (addr == '/speak_end/agv') agvCaptureMaker.uncapture();
+      if (addr == '/speak_end/segway') segwayCaptureMaker.uncapture();
+    }
+
+    if (addr == '/flush_text') {
+      await writeFile(resolve('./tmp_text', 'caption1-alt.txt'), '').catch(_ => false);
+      await writeFile(resolve('./tmp_text', 'caption1.txt'), '').catch(_ => false);
+      await writeFile(resolve('./tmp_text', 'caption2-alt.txt'), '').catch(_ => false);
+      await writeFile(resolve('./tmp_text', 'caption2.txt'), '').catch(_ => false);
+    }
+
+    if (addr == '/capture') {
+      const fname = `${Date.now()}.jpg`;
+      const rpath = resolve('./tmp', fname);
+
+      if (OBS_HOST && obs) {
         res = await obs.call('GetSourceScreenshot', {
           imageFormat: 'jpeg',
           sourceName: data[0],
-          // sourceUuid: '',
-          // imageWidth: '',
-          // imageHeight: '',
+          // TODO: size options
+          // imageWidth: '', imageHeight: '',
         }).catch(_ => false);
 
         if (res !== false) {
           toFile = await writeFile(
-            resolve('./tmp', fname),
+            rpath,
             Buffer.from(res.imageData.replace(/^data:image\/\w+;base64,/, ''), 'base64')
           ).catch(_ => false);
         }
@@ -216,17 +238,18 @@ const main = async () => {
       }
 
       if (res !== false) {
-        // -- TODO: multi head
         if (CAPTURE_SRC_LOCAL == data[0]) {
+          segwayCaptureMaker.capture(rpath);
+
           const rres = await allmChatRequest(
             localConfig,
-            // counts < 1 ? '実況してください。' : '続きを実況してください。',
-            'コンテキストに基づいて現在の場面の実況テキストを作成しなさい。',
-            // '現在の場面について説明しなさい。',
             // '現在の画像に写っているものを列挙しなさい。',
+            // 'コンテキストに基づいて現在の場面の実況テキストを作成しなさい。',
+            // 'Create text for the current scene based on the context.',
+            // 'Describe the current scene',
+            'Describe the current scene, only nuon and adjective or person\'s name.',
             [res.imageData],
             (localConfig.counts == 0)
-            // true
           );
 
           if (rres && rres.type == 'textResponse') {
@@ -235,18 +258,31 @@ const main = async () => {
             let content = rres[rres.type];
             console.log(content);
 
-            // const [en_c, ch_c = ''] = content.split('|');
-            content = content.replace(/[\r\n]/g, '');
-            const en_c = content.replace(/^.*en\{(.*)\}\|.*$/, '$1');
-            const ch_c = content.replace(/^.*\|ch\{(.*)\}.*$/, '$1');
+            try {
+              // const [en_c, ch_c = ''] = content.split('|');
+              // content = content.replace(/[\r\n]/g, '');
+              // const en_c = content.replace(/^.*en\{(.*)\}\|.*$/, '$1');
+              // const ch_c = content.replace(/^.*\|ch\{(.*)\}.*$/, '$1');
 
-            // TODO:
-            writeFile(resolve('./tmp_text', 'caption1-alt.txt'), en_c).catch(_ => false);
-            writeFile(resolve('./tmp_text', 'caption1.txt'), ch_c).catch(_ => false);
+              let en_c = content.match(/en:([^\r\n]+)[\r\n]/g);
+              let ch_c = content.match(/tw:([^\r\n]+)[\r\n]/g);
+              let ja_c = content.match(/ja:([^\r\n]+)[\r\n].*$/g);
 
-            if (speaker) { speaker.speak(ch_c.length == 0 ? '' : ch_c); }
+              en_c = (en_c && en_c.length > 0) ? en_c[0] : '';
+              en_c = en_c.replace(/^en:/, '');
+              ch_c = (ch_c && ch_c.length > 0) ? ch_c[0] : '';
+              ch_c = ch_c.replace(/^tw:/, '');
+              ja_c = (ja_c && ja_c.length > 0) ? ja_c[0] : '';
+              ja_c = ja_c.replace(/^ja:/, '');
 
-            oscClient.send('/done', data[0]);
+              segwayCaptionMaker.make(ch_c, en_c, ja_c);
+
+              if (speaker) { speaker.speak(ch_c); }
+
+              oscClient.send('/done', data[0]);
+            } catch (err) {
+              console.error(err);
+            }
           }
 
           console.info('-- local -- ', localConfig.counts, DateTime.now().toString());
@@ -254,9 +290,15 @@ const main = async () => {
         }
 
         if (CAPTURE_SRC_REMOTE == data[0]) {
+          agvCaptureMaker.capture(rpath);
+
           const rres = await allmChatRequest(
             remoteConfig,
-            'コンテキストに基づいて現在の場面の実況テキストを作成しなさい。',
+            // 'コンテキストに基づいて現在の場面の実況テキストを作成しなさい。',
+            // 'Create text for the current scene based on the context.',
+            'Describe the current scene',
+            // 'Describe the current scene, shorter sentence.',
+            // 'Describe what\'s happen in the image? Explain it in words that a sixth grader can understand.',
             [res.imageData],
             (remoteConfig.counts == 0)
           );
@@ -267,19 +309,29 @@ const main = async () => {
             let content = rres[rres.type];
             console.log(content);
 
-            // const [en_c, ch_c = ''] = content.split('|');
-            // content = content.replace(/[\r\n]/g, '');
-
             try {
-              let [en_c = ''] = content.match(/en\{([^}]+)\}/g);
-              let [ch_c = ''] = content.match(/ch\{([^}]+)\}/g);
+              // let [en_c = ''] = content.match(/en:\{([^}]+)\}/g);
+              // let [ch_c = ''] = content.match(/tw:\{([^}]+)\}/g);
+              // let [ja_c = ''] = content.match(/ja:\{([^}]+)\}/g);
 
-              en_c = en_c.replace(/(en\{)|(\})/g, '');
-              ch_c = ch_c.replace(/(ch\{)|(\})/g, '');
+              // en_c = en_c.replace(/(en:\{)|(\})/g, '');
+              // ch_c = ch_c.replace(/(tw:\{)|(\})/g, '');
+              // ja_c = ja_c.replace(/(ja:\{)|(\})/g, '');
 
-              // TODO:
-              writeFile(resolve('./tmp_text', 'caption2-alt.txt'), en_c).catch(_ => false);
-              writeFile(resolve('./tmp_text', 'caption2.txt'), ch_c).catch(_ => false);
+              let en_c = content.match(/en:([^\r\n]+)[\r\n]/g);
+              let ch_c = content.match(/tw:([^\r\n]+)[\r\n]/g);
+              let ja_c = content.match(/ja:([^\r\n]+)[\r\n]*/g);
+
+              console.log('--', `${en_c} | ${ch_c} | ${ja_c}`);
+
+              en_c = (en_c && en_c.length > 0) ? en_c[0] : '';
+              en_c = en_c.replace(/^en:/, '');
+              ch_c = (ch_c && ch_c.length > 0) ? ch_c[0] : '';
+              ch_c = ch_c.replace(/^tw:/, '');
+              ja_c = (ja_c && ja_c.length > 0) ? ja_c[0] : '';
+              ja_c = ja_c.replace(/^ja:/, '');
+
+              agvCaptionMaker.make(ch_c, en_c, ja_c);
 
               await got.post(
                 `${PROXYBACK_HOST}/speak`,
@@ -294,15 +346,9 @@ const main = async () => {
 
               return;
             }
-
-            // const en_c = content.replace(/^.*en\{(.*)\}/, '$1');
-            // const ch_c = content.replace(/^.*ch\{(.*)\}/, '$1');
-            // const en_c = content.replace(/^.*en\{(.*)\}\|.*$/, '$1');
-            // const ch_c = content.replace(/^.*\|ch\{(.*)\}.*$/, '$1');
           }
 
           console.info('-- remote -- ', remoteConfig.counts, DateTime.now().toString());
-
           remoteConfig.counts++;
         }
         // --
