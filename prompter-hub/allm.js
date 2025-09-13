@@ -50,6 +50,18 @@ const segwayCaptionMaker = new CaptionMaker();
 const agvCaptureMaker = new CaptureMaker();
 const segwayCaptureMaker = new CaptureMaker();
 
+const segwayPromptTtpl = [
+  'Describe the current scene',
+  'Describe the current scene, only nuon and adjective or person\'s name.',
+];
+let segwayPromptTtplIndex = 0;
+
+const agvPromptTtpl = [
+  'Describe the current scene',
+  'Describe the current scene, with your emotion, also you can use emoji.',
+];
+let agvPromptTtplIndex = 0;
+
 const allmConfigRequest = async (target) => {
   const { ALLM_APIKEY, ALLM_HOST, ALLM_WORKSPACE, ALLM_THREAD } = target;
   let targetThread = false;
@@ -208,6 +220,15 @@ const main = async () => {
       if (addr == '/speak_end/segway') segwayCaptureMaker.uncapture();
     }
 
+    if (/^\/prompt_tpl\/.*/.test(addr)) {
+      console.log('prompt tpl', addr);
+      if (addr == '/prompt_tpl/agv') {
+        agvPromptTtplIndex = Math.min(data[0], agvPromptTtpl.length - 1); }
+      if (addr == '/prompt_tpl/segway') {
+        segwayPromptTtplIndex = Math.min(data[0], segwayPromptTtpl.length - 1);
+      }
+    }
+
     if (addr == '/flush_text') {
       await writeFile(resolve('./tmp_text', 'caption1-alt.txt'), '').catch(_ => false);
       await writeFile(resolve('./tmp_text', 'caption1.txt'), '').catch(_ => false);
@@ -240,6 +261,9 @@ const main = async () => {
       if (res !== false) {
         if (CAPTURE_SRC_LOCAL == data[0]) {
           segwayCaptureMaker.capture(rpath);
+          segwayCaptionMaker.flush();
+
+          console.log('user prompt', segwayPromptTtpl[segwayPromptTtplIndex], DateTime.now().toString());
 
           const rres = await allmChatRequest(
             localConfig,
@@ -247,7 +271,8 @@ const main = async () => {
             // 'コンテキストに基づいて現在の場面の実況テキストを作成しなさい。',
             // 'Create text for the current scene based on the context.',
             // 'Describe the current scene',
-            'Describe the current scene, only nuon and adjective or person\'s name.',
+            // 'Describe the current scene, only nuon and adjective or person\'s name.',
+            segwayPromptTtpl[segwayPromptTtplIndex],
             [res.imageData],
             (localConfig.counts == 0)
           );
@@ -266,7 +291,9 @@ const main = async () => {
 
               let en_c = content.match(/en:([^\r\n]+)[\r\n]/g);
               let ch_c = content.match(/tw:([^\r\n]+)[\r\n]/g);
-              let ja_c = content.match(/ja:([^\r\n]+)[\r\n].*$/g);
+              let ja_c = content.match(/ja:([^\r\n]+)[\r\n]*/g);
+
+              console.log('LOCAL--', `${en_c} | ${ch_c} | ${ja_c}`);
 
               en_c = (en_c && en_c.length > 0) ? en_c[0] : '';
               en_c = en_c.replace(/^en:/, '');
@@ -291,14 +318,18 @@ const main = async () => {
 
         if (CAPTURE_SRC_REMOTE == data[0]) {
           agvCaptureMaker.capture(rpath);
+          agvCaptionMaker.flush();
+
+          console.log('user prompt', agvPromptTtpl[agvPromptTtplIndex], DateTime.now().toString());
 
           const rres = await allmChatRequest(
             remoteConfig,
             // 'コンテキストに基づいて現在の場面の実況テキストを作成しなさい。',
             // 'Create text for the current scene based on the context.',
-            'Describe the current scene',
+            // 'Describe the current scene',
             // 'Describe the current scene, shorter sentence.',
             // 'Describe what\'s happen in the image? Explain it in words that a sixth grader can understand.',
+            agvPromptTtpl[agvPromptTtplIndex],
             [res.imageData],
             (remoteConfig.counts == 0)
           );
@@ -322,7 +353,7 @@ const main = async () => {
               let ch_c = content.match(/tw:([^\r\n]+)[\r\n]/g);
               let ja_c = content.match(/ja:([^\r\n]+)[\r\n]*/g);
 
-              console.log('--', `${en_c} | ${ch_c} | ${ja_c}`);
+              console.log('REMOTE--', `${en_c} | ${ch_c} | ${ja_c}`);
 
               en_c = (en_c && en_c.length > 0) ? en_c[0] : '';
               en_c = en_c.replace(/^en:/, '');

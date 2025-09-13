@@ -86,6 +86,12 @@ class CaptionMaker {
     });
   }
 
+  flush() {
+    this.post(this.config.captionName1, '');
+    this.post(this.config.captionName2, '');
+    this.post(this.config.captionName3, '');
+  }
+
   make(caption1, caption2, caption3, options = {}) {
     // console.log(caption1, caption2, caption3);
 
